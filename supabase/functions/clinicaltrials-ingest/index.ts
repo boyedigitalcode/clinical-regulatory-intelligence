@@ -1,32 +1,24 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts"
+const CLINICALTRIALS_API =
+  "https://clinicaltrials.gov/api/v2/studies?pageSize=100";
 
-console.log("Hello from Functions!")
+serve(async () => {
+  try {
+    const response = await fetch(CLINICALTRIALS_API);
+    const data = await response.json();
 
-Deno.serve(async (req) => {
-  const { name } = await req.json()
-  const data = {
-    message: `Hello ${name}!`,
+    return new Response(JSON.stringify({
+      message: "ClinicalTrials ingestion successful",
+      study_count: data.studies?.length ?? 0
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+
+  } catch (error) {
+    return new Response(JSON.stringify({
+      error: "Failed to ingest ClinicalTrials data",
+      details: String(error)
+    }), { status: 500 });
   }
-
-  return new Response(
-    JSON.stringify(data),
-    { headers: { "Content-Type": "application/json" } },
-  )
-})
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/clinicaltrials-ingest' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
+});
